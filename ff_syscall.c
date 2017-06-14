@@ -34,6 +34,9 @@ static int (*real_bind)(int, const struct sockaddr*, socklen_t);
 static int (*real_connect)(int, const struct sockaddr*, socklen_t);
 static int (*real_listen)(int, int);
 static int (*real_setsockopt)(int, int, int, const void *, socklen_t);
+static int (*real_getsockopt)(int, int, int, void *, socklen_t *);
+static int (*real_getpeername)(int, struct sockaddr *, socklen_t *);
+static int (*real_getsockname)(int, struct sockaddr *, socklen_t *);
 static int (*real_accept)(int, struct sockaddr *, socklen_t *);
 static int (*real_accept4)(int, struct sockaddr *, socklen_t *, int);
 static ssize_t (*real_recv)(int, void *, size_t, int);
@@ -42,6 +45,8 @@ static ssize_t (*real_writev)(int, const struct iovec *, int);
 static ssize_t (*real_write)(int, const void *, size_t );
 static ssize_t (*real_read)(int, void *, size_t );
 static ssize_t (*real_readv)(int, const struct iovec *, int);
+static ssize_t (*real_recvfrom)(int, void *, size_t, int, struct sockaddr *, socklen_t *);
+static ssize_t (*real_sendto)(int, const void *, size_t, int, const struct sockaddr *, socklen_t);
 static int (*real_ioctl)(int, int, void *);
 static int (*real_select)(int, fd_set *, fd_set *, fd_set *, struct timeval *);
 static int (*real_kqueue)(void);
@@ -131,6 +136,18 @@ connect(int fd, const struct sockaddr *addr, socklen_t addrlen)
 }
 
 __WEAK ssize_t
+sendto(int fd, const void *buf, size_t len, int flags,
+        const struct sockaddr *to, socklen_t tolen)
+{
+    if (IS_FSTACK_FD(fd)) {
+        return ff_sendto(fd, buf, len, flags, (const struct linux_sockaddr *)to, tolen);
+
+    } else {
+        return SYSCALL(sendto)(fd, buf, len, flags, to, tolen);
+    }
+}
+
+__WEAK ssize_t
 send(int fd, const void *buf, size_t len, int flags)
 {
     if (IS_FSTACK_FD(fd)) {
@@ -149,6 +166,18 @@ write(int fd, const void *buf, size_t count)
 
     } else {
         return SYSCALL(write)(fd, buf, count);
+    }
+}
+
+__WEAK ssize_t
+recvfrom(int fd, void *buf, size_t len, int flags,
+        struct sockaddr *from, socklen_t *fromlen)
+{
+    if (IS_FSTACK_FD(fd)) {
+        return ff_recvfrom(fd, buf, len, flags, (struct linux_sockaddr *)from, fromlen);
+
+    } else {
+        return SYSCALL(recvfrom)(fd, buf, len, flags, from, fromlen);
     }
 }
 
@@ -186,7 +215,7 @@ listen(int fd, int backlog)
 }
 
 __WEAK int
-setsockopt (int fd, int level, int optname,
+setsockopt(int fd, int level, int optname,
     const void *optval, socklen_t optlen)
 {
     if (IS_FSTACK_FD(fd)) {
@@ -194,6 +223,40 @@ setsockopt (int fd, int level, int optname,
 
     } else {
         return SYSCALL(setsockopt)(fd, level, optname, optval, optlen);
+    }
+}
+
+__WEAK int
+getsockopt(int fd, int level, int optname,
+    void *optval, socklen_t *optlen)
+{
+    if (IS_FSTACK_FD(fd)) {
+        return ff_getsockopt(fd, level, optname, optval, optlen);
+
+    } else {
+        return SYSCALL(getsockopt)(fd, level, optname, optval, optlen);
+    }
+}
+
+__WEAK int
+getsockname(int fd, struct sockaddr *addr, socklen_t *addrlen)
+{
+    if (IS_FSTACK_FD(fd)) {
+        return ff_getsockname(fd, (struct linux_sockaddr *)addr, addrlen);
+
+    } else {
+        return SYSCALL(getsockname)(fd, addr, addrlen);
+    }
+}
+
+__WEAK int
+getpeername(int fd, struct sockaddr *addr, socklen_t *addrlen)
+{
+    if (IS_FSTACK_FD(fd)) {
+        return ff_getpeername(fd, (struct linux_sockaddr *)addr, addrlen);
+
+    } else {
+        return SYSCALL(getpeername)(fd, addr, addrlen);
     }
 }
 
