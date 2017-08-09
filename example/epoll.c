@@ -105,15 +105,7 @@ int loop(void *arg)
 
 int main(int argc, char * argv[])
 {
-    char *conf;
-    if (argc < 2) {
-        conf = "./config.ini";
-    } else {
-        conf = argv[1];
-    }
-
-    ff_init(conf, argc, argv);
-    set_fd_start(256);
+    ff_init(argc, argv);
 
 #ifndef __WITHOUT_DPDK
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
